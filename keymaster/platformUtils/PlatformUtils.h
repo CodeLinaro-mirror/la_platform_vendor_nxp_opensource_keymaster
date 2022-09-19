@@ -25,6 +25,12 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * =============================================================================
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ * =============================================================================
  */
 
 #ifndef __PLATFORM_UTILS_H_
@@ -36,6 +42,7 @@
 #define PROPERTY_LENGTH_MAX         10
 #define RESTRICTED_PLATFORM_TARO    "taro"
 #define RESTRICTED_PLATFORM_CAPE    "cape"
+#define RESTRICTED_PLATFORM_UKEE    "ukee"
 
 /**@brief:  Checks if eSE-strongbox HAL service registration to be
  *          allowed on the platform.

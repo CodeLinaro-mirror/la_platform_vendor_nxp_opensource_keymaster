@@ -27,16 +27,21 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #=============================================================================
+# Changes from Qualcomm Innovation Center are provided under the following license:
+#
+# Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#=============================================================================
 
 platform=`getprop ro.boot.product.vendor.sku` 2> /dev/null
 action=$1
 
-#Stop service with sku as taro or cape
+#Stop service with sku as taro or cape or ukee
 if [ "$action" = "service-restart" ]; then
-    if [ "$platform" = "taro" ] || [ "$platform" = "cape" ]; then
+    if [ "$platform" = "taro" ] || [ "$platform" = "cape" ] || [ "$platform" = "ukee" ]; then
         stop vendor.ese-strongbox_4_1
     fi
-elif [ "$platform" != "taro" ] && [ "$platform" != "cape" ]; then
+elif [ "$platform" != "taro" ] && [ "$platform" != "cape" ] && [ "$platform" != "ukee" ]; then
     enable vendor.ese-strongbox_4_1
     start vendor.ese-strongbox_4_1
 fi
