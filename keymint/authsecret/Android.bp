@@ -1,5 +1,5 @@
-//***************************************************************************
-// The original Work has been changed by NXP.
+//
+// Copyright (C) 2020 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,32 +13,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Copyright 2022-2023 NXP
-// *************************************************************************
 
 cc_binary {
-    name: "android.hardware.weaver-service.nxp",
+    name: "android.hardware.authsecret-service.nxp",
     relative_install_path: "hw",
-    init_rc: ["aidl_impl/android.hardware.weaver-service.nxp.rc"],
-    vintf_fragments: ["aidl_impl/android.hardware.weaver-service.nxp.xml"],
+    init_rc: ["android.hardware.authsecret-service.nxp.rc"],
+    vintf_fragments: ["android.hardware.authsecret-service.nxp.xml"],
     vendor: true,
     srcs: [
-        "aidl_impl/service.cpp",
-        "aidl_impl/Weaver.cpp",
+        "service.cpp",
+        "AuthSecret.cpp",
+        "AuthSecretHelper.cpp",
     ],
-
-    local_include_dirs: [
-        "libese_weaver/inc",
-    ],
-    cppflags: [
+    cflags: [
+        "-DOMAPI_TRANSPORT",
+        "-DNXP_EXTNS",
         "-Wall",
-        "-fexceptions",
+        "-Werror",
     ],
     shared_libs: [
-        "android.hardware.weaver-V2-ndk",
+        "android.hardware.authsecret-V1-ndk",
         "libbase",
         "libbinder_ndk",
-        "liblog",
-        "ese_weaver",
+        "android.se.omapi-V1-ndk",
+        "libjc_keymint_transport",
+        "libcppbor_external",
     ],
 }

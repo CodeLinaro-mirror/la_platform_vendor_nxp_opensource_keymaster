@@ -34,16 +34,14 @@ cc_library {
     name: "libjc_keymint",
     defaults: [
         "keymaster_defaults",
-        "keymint_use_latest_hal_aidl_ndk_shared",
     ],
     srcs: [
-    	"CborConverter.cpp",
+        "CborConverter.cpp",
         "JavacardKeyMintDevice.cpp",
         "JavacardKeyMintOperation.cpp",
         "JavacardRemotelyProvisionedComponentDevice.cpp",
         "JavacardSecureElement.cpp",
         "JavacardSharedSecret.cpp",
-        "JavacardKeyMintUtils.cpp",
         "keymint_utils.cpp",
     ],
     cflags:[
@@ -51,9 +49,11 @@ cc_library {
         "-DNXP_EXTNS",
     ],
     shared_libs: [
+        "android.hardware.security.rkp-V3-ndk",
         "android.hardware.security.secureclock-V1-ndk",
         "android.hardware.security.sharedsecret-V1-ndk",
-    	"libbase",
+        "lib_android_keymaster_keymint_utils",
+        "libbase",
         "libbinder",
         "libcppbor_external",
         "libkeymaster_portable",
@@ -64,6 +64,8 @@ cc_library {
         "libcutils",
         "libjc_keymint_transport",
         "libbinder_ndk",
+        "libmemunreachable",
+        "android.hardware.security.keymint-V3-ndk",
     ],
     export_include_dirs: [
         ".",
@@ -78,9 +80,6 @@ cc_library {
 
 cc_library {
     name: "libjc_keymint_transport",
-    defaults: [
-        "keymint_use_latest_hal_aidl_ndk_shared",
-    ],
     vendor_available: true,
     srcs: [
         "transport/*.cpp",
@@ -91,7 +90,7 @@ cc_library {
         "-DNXP_EXTNS",
     ],
     export_include_dirs: [
-        "transport/include"
+        "transport/include",
     ],
     export_shared_lib_headers: [
         "android.hardware.secure_element@1.0",
@@ -115,9 +114,6 @@ cc_library {
 
 cc_binary {
     name: "android.hardware.security.keymint-service.strongbox",
-    defaults: [
-        "keymint_use_latest_hal_aidl_ndk_shared",
-    ],
     relative_install_path: "hw",
     init_rc: ["android.hardware.security.keymint-service.strongbox.rc"],
     vendor: true,
@@ -128,7 +124,9 @@ cc_binary {
         "-DNXP_EXTNS",
     ],
     shared_libs: [
+        "android.hardware.security.rkp-V3-ndk",
         "android.hardware.security.sharedsecret-V1-ndk",
+        "lib_android_keymaster_keymint_utils",
         "android.se.omapi-V1-ndk",
         "libbase",
         "libbinder_ndk",
@@ -140,12 +138,14 @@ cc_binary {
         "liblog",
         "libutils",
         "libhidlbase",
+        "android.hardware.security.keymint-V3-ndk",
     ],
     srcs: [
         "service.cpp",
     ],
     required: [
         "RemoteProvisioner",
+        "android.hardware.hardware_keystore.jc-strongbox-keymint.xml",
     ],
 }
 
@@ -164,8 +164,8 @@ prebuilt_etc {
 }
 
 prebuilt_etc {
-    name: "android.hardware.strongbox_keystore.xml",
+    name: "android.hardware.hardware_keystore.jc-strongbox-keymint.xml",
     sub_dir: "permissions",
     vendor: true,
-    src: "android.hardware.strongbox_keystore.xml",
+    src: "android.hardware.hardware_keystore.jc-strongbox-keymint.xml",
 }

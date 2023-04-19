@@ -15,9 +15,11 @@
  */
 
 #pragma once
+
+#include <string>
 #include <vector>
 
-//#include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
+// #include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
 
 // namespace aidl::android::hardware::security::keymint {
 namespace keymint::javacard {
