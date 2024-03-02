@@ -29,17 +29,19 @@
  ** See the License for the specific language governing permissions and
  ** limitations under the License.
  **
- ** Copyright 2022-2023 NXP
+ ** Copyright 2022 NXP
  **
  *********************************************************************************/
 #define LOG_TAG "javacard.strongbox.keymint.operation-impl"
 
 #include "JavacardKeyMintOperation.h"
-#include "CborConverter.h"
-#include <JavacardKeyMintUtils.h>
+
+#include <KeyMintUtils.h>
 #include <aidl/android/hardware/security/keymint/ErrorCode.h>
 #include <aidl/android/hardware/security/secureclock/ISecureClock.h>
 #include <android-base/logging.h>
+
+#include "CborConverter.h"
 
 namespace aidl::android::hardware::security::keymint {
 using cppbor::Bstr;
@@ -48,7 +50,7 @@ using secureclock::TimeStampToken;
 
 JavacardKeyMintOperation::~JavacardKeyMintOperation() {
     if (opHandle_ != 0) {
-        abort();
+        JavacardKeyMintOperation::abort();
     }
 }
 
@@ -79,7 +81,7 @@ ScopedAStatus JavacardKeyMintOperation::update(const vector<uint8_t>& input,
         return km_utils::kmError2ScopedAStatus(err);
     }
     if (!(bufferingMode_ == BufferingMode::EC_NO_DIGEST ||
-          bufferingMode_ == BufferingMode::RSA_NO_DIGEST)) {
+          bufferingMode_ == BufferingMode::RSA_DECRYPT_OR_NO_DIGEST)) {
         if (view.length > MAX_CHUNK_SIZE) {
             err = updateInChunks(view, aToken, tToken, output);
             if (err != KM_ERROR_OK) {
@@ -92,10 +94,12 @@ ScopedAStatus JavacardKeyMintOperation::update(const vector<uint8_t>& input,
     return km_utils::kmError2ScopedAStatus(err);
 }
 
-ScopedAStatus JavacardKeyMintOperation::finish(
-    const optional<vector<uint8_t>>& input, const optional<vector<uint8_t>>& signature,
-    const optional<HardwareAuthToken>& authToken, const optional<TimeStampToken>& timestampToken,
-    const optional<vector<uint8_t>>& confirmationToken, vector<uint8_t>* output) {
+ScopedAStatus JavacardKeyMintOperation::finish(const optional<vector<uint8_t>>& input,
+                                               const optional<vector<uint8_t>>& signature,
+                                               const optional<HardwareAuthToken>& authToken,
+                                               const optional<TimeStampToken>& timestampToken,
+                                               const optional<vector<uint8_t>>& confirmationToken,
+                                               vector<uint8_t>* output) {
     HardwareAuthToken aToken = authToken.value_or(HardwareAuthToken());
     TimeStampToken tToken = timestampToken.value_or(TimeStampToken());
     const vector<uint8_t> confToken = confirmationToken.value_or(vector<uint8_t>());
@@ -103,7 +107,7 @@ ScopedAStatus JavacardKeyMintOperation::finish(
     DataView view = {.buffer = {}, .data = inData, .start = 0, .length = inData.size()};
     const vector<uint8_t> sign = signature.value_or(vector<uint8_t>());
     if (!(bufferingMode_ == BufferingMode::EC_NO_DIGEST ||
-          bufferingMode_ == BufferingMode::RSA_NO_DIGEST)) {
+          bufferingMode_ == BufferingMode::RSA_DECRYPT_OR_NO_DIGEST)) {
         appendBufferedData(view);
         if (view.length > MAX_CHUNK_SIZE) {
             auto err = updateInChunks(view, aToken, tToken, output);
@@ -119,7 +123,8 @@ ScopedAStatus JavacardKeyMintOperation::finish(
         appendBufferedData(view);
     }
     vector<uint8_t> remaining = popNextChunk(view, view.length);
-    return km_utils::kmError2ScopedAStatus(sendFinish(remaining, sign, aToken, tToken, confToken, *output));
+    return km_utils::kmError2ScopedAStatus(
+        sendFinish(remaining, sign, aToken, tToken, confToken, *output));
 }
 
 ScopedAStatus JavacardKeyMintOperation::abort() {
@@ -156,7 +161,7 @@ void JavacardKeyMintOperation::blockAlign(DataView& view, uint16_t blockSize) {
 uint16_t JavacardKeyMintOperation::getDataViewOffset(DataView& view, uint16_t blockSize) {
     uint16_t offset = 0;
     uint16_t remaining = 0;
-    switch(bufferingMode_) {
+    switch (bufferingMode_) {
     case BufferingMode::BUF_DES_DECRYPT_PKCS7_BLOCK_ALIGNED:
     case BufferingMode::BUF_AES_DECRYPT_PKCS7_BLOCK_ALIGNED:
         offset = ((view.length / blockSize)) * blockSize;
@@ -183,7 +188,7 @@ uint16_t JavacardKeyMintOperation::getDataViewOffset(DataView& view, uint16_t bl
 keymaster_error_t JavacardKeyMintOperation::bufferData(DataView& view) {
     if (view.data.empty()) return KM_ERROR_OK;  // nothing to buffer
     switch (bufferingMode_) {
-    case BufferingMode::RSA_NO_DIGEST:
+    case BufferingMode::RSA_DECRYPT_OR_NO_DIGEST:
         buffer_.insert(buffer_.end(), view.data.begin(), view.data.end());
         if (buffer_.size() > RSA_BUFFER_SIZE) {
             abort();
@@ -195,7 +200,7 @@ keymaster_error_t JavacardKeyMintOperation::bufferData(DataView& view) {
     case BufferingMode::EC_NO_DIGEST:
         if (buffer_.size() < EC_BUFFER_SIZE) {
             buffer_.insert(buffer_.end(), view.data.begin(), view.data.end());
-            // Truncate the buffered data if greater then allowed EC buffer size.
+            // Truncate the buffered data if greater than allowed EC buffer size.
             if (buffer_.size() > EC_BUFFER_SIZE) {
                 buffer_.erase(buffer_.begin() + EC_BUFFER_SIZE, buffer_.end());
             }
@@ -277,11 +282,11 @@ keymaster_error_t JavacardKeyMintOperation::sendUpdate(const vector<uint8_t>& in
     if (error != KM_ERROR_OK) {
         return error;
     }
-    vector<uint8_t> respData;
-    if (!cbor_.getBinaryArray(item, 1, respData)) {
+    auto optTemp = cbor_.getByteArrayVec(item, 1);
+    if (!optTemp) {
         return KM_ERROR_UNKNOWN_ERROR;
     }
-    output.insert(output.end(), respData.begin(), respData.end());
+    output.insert(output.end(), optTemp.value().begin(), optTemp.value().end());
     return KM_ERROR_OK;
 }
 
@@ -298,19 +303,19 @@ keymaster_error_t JavacardKeyMintOperation::sendFinish(const vector<uint8_t>& da
     cbor_.addHardwareAuthToken(request, authToken);
     cbor_.addTimeStampToken(request, timestampToken);
     request.add(Bstr(confToken));
-    
+
     auto [item, err] = card_->sendRequest(Instruction::INS_FINISH_OPERATION_CMD, request);
     if (err != KM_ERROR_OK) {
         return err;
     }
-    vector<uint8_t> respData;
-    if (!cbor_.getBinaryArray(item, 1, respData)) {
+    auto optTemp = cbor_.getByteArrayVec(item, 1);
+    if (!optTemp) {
         return KM_ERROR_UNKNOWN_ERROR;
     }
     opHandle_ = 0;
-    output.insert(output.end(), respData.begin(), respData.end());
+    output.insert(output.end(), optTemp.value().begin(), optTemp.value().end());
 #ifdef NXP_EXTNS
-    LOG(INFO) << "(finish) completed Succesfully";
+    LOG(INFO) << "(finish) completed Successfully";
 #endif
     return KM_ERROR_OK;
 }

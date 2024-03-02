@@ -14,32 +14,33 @@
  * limitations under the License.
  */
 /******************************************************************************
- *
- *  The original Work has been changed by NXP.
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- *  Copyright 2022-2023 NXP
- *
- ******************************************************************************/
+*
+*  The original Work has been changed by NXP.
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*  http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+*
+*  Copyright 2022 NXP
+*
+******************************************************************************/
 #pragma once
 
-#include "CborConverter.h"
-#include "JavacardSecureElement.h"
 #include <aidl/android/hardware/security/keymint/BnKeyMintDevice.h>
 #include <aidl/android/hardware/security/keymint/BnKeyMintOperation.h>
 #include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
 #include <aidl/android/hardware/security/sharedsecret/SharedSecretParameters.h>
+
+#include "CborConverter.h"
+#include "JavacardSecureElement.h"
 
 namespace aidl::android::hardware::security::keymint {
 using cppbor::Item;
@@ -47,6 +48,7 @@ using ::keymint::javacard::CborConverter;
 using ::keymint::javacard::JavacardSecureElement;
 using ndk::ScopedAStatus;
 using secureclock::TimeStampToken;
+using std::array;
 using std::optional;
 using std::shared_ptr;
 using std::vector;
@@ -54,9 +56,8 @@ using std::vector;
 class JavacardKeyMintDevice : public BnKeyMintDevice {
   public:
     explicit JavacardKeyMintDevice(shared_ptr<JavacardSecureElement> card)
-        : securitylevel_(SecurityLevel::STRONGBOX), card_(std::move(card)),
-          isEarlyBootEventPending(true) {
-      card_->initializeJavacard();
+        : securitylevel_(SecurityLevel::STRONGBOX), card_(card) {
+        card_->initializeJavacard();
     }
     virtual ~JavacardKeyMintDevice() {}
 
@@ -108,7 +109,6 @@ class JavacardKeyMintDevice : public BnKeyMintDevice {
 
     ScopedAStatus convertStorageKeyToEphemeral(const std::vector<uint8_t>& storageKeyBlob,
                                                std::vector<uint8_t>* ephemeralKeyBlob) override;
-
     ScopedAStatus getRootOfTrustChallenge(std::array<uint8_t, 16>* _aidl_return) override;
 
     ScopedAStatus getRootOfTrust(const std::array<uint8_t, 16>& in_challenge,
@@ -136,12 +136,9 @@ class JavacardKeyMintDevice : public BnKeyMintDevice {
 
     ScopedAStatus defaultHwInfo(KeyMintHardwareInfo* info);
 
-    void handleSendEarlyBootEndedEvent();
-
     const SecurityLevel securitylevel_;
     const shared_ptr<JavacardSecureElement> card_;
     CborConverter cbor_;
-    bool isEarlyBootEventPending;
 };
 
 }  // namespace aidl::android::hardware::security::keymint
