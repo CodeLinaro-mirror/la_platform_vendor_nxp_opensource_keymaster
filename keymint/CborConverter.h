@@ -14,22 +14,37 @@
  ** See the License for the specific language governing permissions and
  ** limitations under the License.
  */
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  Copyright 2023 NXP
+ *
+ ******************************************************************************/
 #pragma once
-
-#include <iostream>
-#include <memory>
-#include <numeric>
-#include <vector>
-
-#include <cppbor.h>
-#include <cppbor_parse.h>
-
 #include <aidl/android/hardware/security/keymint/Certificate.h>
 #include <aidl/android/hardware/security/keymint/IKeyMintDevice.h>
 #include <aidl/android/hardware/security/secureclock/TimeStampToken.h>
 #include <aidl/android/hardware/security/sharedsecret/ISharedSecret.h>
-
+#include <cppbor.h>
+#include <cppbor_parse.h>
+#include <iostream>
 #include <keymaster/android_keymaster_messages.h>
+#include <memory>
+#include <numeric>
+#include <vector>
 
 namespace keymint::javacard {
 using aidl::android::hardware::security::keymint::AttestationKey;
@@ -41,12 +56,11 @@ using aidl::android::hardware::security::secureclock::TimeStampToken;
 using aidl::android::hardware::security::sharedsecret::SharedSecretParameters;
 using cppbor::Array;
 using cppbor::Bstr;
-using cppbor::EncodedItem;
 using cppbor::Item;
 using cppbor::MajorType;
 using cppbor::Map;
 using cppbor::Nint;
-using cppbor::Tstr;
+using cppbor::parse;
 using cppbor::Uint;
 using std::string;
 using std::unique_ptr;
@@ -55,28 +69,27 @@ using std::vector;
 class CborConverter {
   public:
     CborConverter() = default;
-
     ~CborConverter() = default;
-
     std::tuple<std::unique_ptr<Item>, keymaster_error_t>
     decodeData(const std::vector<uint8_t>& response);
 
-    std::optional<uint64_t> getUint64(const unique_ptr<Item>& item);
+    template <typename T>
+    bool getUint64(const std::unique_ptr<Item>& item, const uint32_t pos, T& value);
 
-    std::optional<uint64_t> getUint64(const unique_ptr<Item>& item, const uint32_t pos);
+    template <typename T> bool getUint64(const std::unique_ptr<Item>& item, T& value);
 
-    std::optional<SharedSecretParameters>
-    getSharedSecretParameters(const std::unique_ptr<Item>& item, const uint32_t pos);
+    bool getSharedSecretParameters(const std::unique_ptr<Item>& item, const uint32_t pos,
+                                   SharedSecretParameters& params);
+    bool getBinaryArray(const std::unique_ptr<Item>& item, const uint32_t pos, string& value);
 
-    std::optional<string> getByteArrayStr(const unique_ptr<Item>& item, const uint32_t pos);
+    bool getBinaryArray(const std::unique_ptr<Item>& item, const uint32_t pos,
+                        vector<uint8_t>& value);
 
-    std::optional<string> getTextStr(const unique_ptr<Item>& item, const uint32_t pos);
+    bool getHardwareAuthToken(const std::unique_ptr<Item>& item, const uint32_t pos,
+                              HardwareAuthToken& authType);
 
-    std::optional<std::vector<uint8_t>> getByteArrayVec(const unique_ptr<Item>& item,
-                                                        const uint32_t pos);
-
-    std::optional<vector<KeyParameter>> getKeyParameters(const unique_ptr<Item>& item,
-                                                         const uint32_t pos);
+    bool getKeyParameters(const std::unique_ptr<Item>& item, const uint32_t pos,
+                          vector<KeyParameter>& keyParams);
 
     bool addKeyparameters(Array& array, const vector<KeyParameter>& keyParams);
 
@@ -86,28 +99,42 @@ class CborConverter {
 
     bool addSharedSecretParameters(Array& array, const vector<SharedSecretParameters>& params);
 
-    std::optional<TimeStampToken> getTimeStampToken(const std::unique_ptr<Item>& item,
-                                                    const uint32_t pos);
+    bool getTimeStampToken(const std::unique_ptr<Item>& item, const uint32_t pos,
+                           TimeStampToken& token);
 
-    std::optional<vector<KeyCharacteristics>>
-    getKeyCharacteristics(const std::unique_ptr<Item>& item, const uint32_t pos);
+    bool getKeyCharacteristics(const std::unique_ptr<Item>& item, const uint32_t pos,
+                               vector<KeyCharacteristics>& keyCharacteristics);
 
-    std::optional<vector<Certificate>> getCertificateChain(const std::unique_ptr<Item>& item,
-                                                           const uint32_t pos);
+    bool getCertificateChain(const std::unique_ptr<Item>& item, const uint32_t pos,
+                             vector<Certificate>& keyCharacteristics);
 
-     std::optional<vector<vector<uint8_t>>> getMultiByteArray(const unique_ptr<Item>& item,
-                                                              const uint32_t pos);
+    bool getMultiBinaryArray(const std::unique_ptr<Item>& item, const uint32_t pos,
+                             vector<vector<uint8_t>>& data);
 
     bool addTimeStampToken(Array& array, const TimeStampToken& token);
 
-    std::optional<Map> getMapItem(const std::unique_ptr<Item>& item, const uint32_t pos);
+    bool getMapItem(const std::unique_ptr<Item>& item, const uint32_t pos,
+                             Map& map);
+    
+    bool getArrayItem(const std::unique_ptr<Item>& item, const uint32_t pos,
+                             Array& array);
 
-    std::optional<Array> getArrayItem(const std::unique_ptr<Item>& item, const uint32_t pos);
-
-    std::optional<keymaster_error_t> getErrorCode(const std::unique_ptr<Item>& item,
-                                                  const uint32_t pos);
+    inline bool getErrorCode(const std::unique_ptr<Item>& item, const uint32_t pos,
+                             keymaster_error_t& errorCode) {
+        uint64_t errorVal;
+        if (!getUint64<uint64_t>(item, pos, errorVal)) {
+            return false;
+        }
+        errorCode = static_cast<keymaster_error_t>(0 - errorVal);
+        return true;
+    }
 
   private:
+    /**
+     * Returns the negative value of the same number.
+     */
+    inline int32_t get2sCompliment(uint32_t value) { return static_cast<int32_t>(~value + 1); }
+
     /**
      * Get the type of the Item pointer.
      */
@@ -118,25 +145,49 @@ class CborConverter {
      * value contains binary string. If TagType is UINT_REP or ULONG_REP the value contains Array of
      * unsigned integers.
      */
-    std::optional<std::vector<KeyParameter>> getKeyParameter(
-        const std::pair<const std::unique_ptr<Item>&, const std::unique_ptr<Item>&> pair);
+    bool getKeyParameter(const std::pair<const unique_ptr<Item>&, const unique_ptr<Item>&> pair,
+                         vector<KeyParameter>& keyParam);
 
     /**
      * Get the sub item pointer from the root item pointer at the given position.
      */
-    inline std::optional<unique_ptr<Item>> getItemAtPos(const unique_ptr<Item>& item,
-                                                        const uint32_t pos) {
+    inline void getItemAtPos(const unique_ptr<Item>& item, const uint32_t pos,
+                             unique_ptr<Item>& subItem) {
         Array* arr = nullptr;
 
         if (MajorType::ARRAY != getType(item)) {
-            return std::nullopt;
+            return;
         }
         arr = const_cast<Array*>(item.get()->asArray());
         if (arr->size() < (pos + 1)) {
-            return std::nullopt;
+            return;
         }
-        return std::move((*arr)[pos]);
+        subItem = std::move((*arr)[pos]);
     }
 };
 
+template <typename T> bool CborConverter::getUint64(const unique_ptr<Item>& item, T& value) {
+    bool ret = false;
+    if ((item == nullptr) || (std::is_unsigned<T>::value && (MajorType::UINT != getType(item))) ||
+        ((std::is_signed<T>::value && (MajorType::NINT != getType(item))))) {
+        return ret;
+    }
+
+    if (std::is_unsigned<T>::value) {
+        const Uint* uintVal = item.get()->asUint();
+        value = static_cast<T>(uintVal->value());
+    } else {
+        const Nint* nintVal = item.get()->asNint();
+        value = static_cast<T>(nintVal->value());
+    }
+    ret = true;
+    return ret;  // success
+}
+
+template <typename T>
+bool CborConverter::getUint64(const unique_ptr<Item>& item, const uint32_t pos, T& value) {
+    unique_ptr<Item> intItem(nullptr);
+    getItemAtPos(item, pos, intItem);
+    return getUint64(intItem, value);
+}
 }  // namespace keymint::javacard

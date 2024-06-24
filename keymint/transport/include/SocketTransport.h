@@ -67,7 +67,10 @@ class SocketTransport : public ITransport {
     bool isConnected() override;
 
   private:
-    bool readData(vector<uint8_t>& output);
+  bool readData(vector<uint8_t>& output);
+    /**
+     * Socket instance.
+     */
     int mSocket;
     bool socketStatus;
 };

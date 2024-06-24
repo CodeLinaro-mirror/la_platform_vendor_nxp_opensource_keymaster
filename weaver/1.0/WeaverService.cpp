@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  Copyright 2020, 2022 NXP
+ *  Copyright 2020 NXP
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -21,8 +21,6 @@
 #include <android/hardware/weaver/1.0/types.h>
 
 #include <hidl/LegacySupport.h>
-#include <android/binder_process.h>
-
 #include <string.h>
 #include "Weaver.h"
 
@@ -31,7 +29,9 @@ using android::hardware::weaver::V1_0::IWeaver;
 using android::hardware::weaver::V1_0::implementation::Weaver;
 using android::hardware::defaultPassthroughServiceImplementation;
 using android::OK;
+using android::hardware::configureRpcThreadpool;
 using android::hardware::registerPassthroughServiceImplementation;
+using android::hardware::joinRpcThreadpool;
 
 using android::sp;
 using android::status_t;
@@ -48,7 +48,7 @@ int main() {
       ALOGE("Can not create an instance of Weaver HAL Interface, exiting.");
       goto shutdown;
     }
-    ABinderProcess_setThreadPoolMaxThreadCount(0);
+    configureRpcThreadpool(1, true /*callerWillJoin*/);
     status = weaver_service->registerAsService();
 
     if (status != OK) {
@@ -56,7 +56,8 @@ int main() {
       goto shutdown;
     }
     ALOGI("Weaver Service is ready");
-    ABinderProcess_joinThreadPool();
+
+    joinRpcThreadpool();
   } catch (std::length_error& e) {
     ALOGE("Length Exception occurred = %s ", e.what());
   } catch (std::__1::ios_base::failure& e) {

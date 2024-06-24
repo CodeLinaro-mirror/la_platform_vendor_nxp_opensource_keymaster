@@ -18,8 +18,6 @@ cc_library_shared {
         "-Wall",
         "-Werror",
         "-DOMAPI_TRANSPORT",
-        "-DINTERVAL_TIMER",
-        "-DNXP_EXTNS",
     ],
 
     shared_libs: [
@@ -30,7 +28,6 @@ cc_library_shared {
         "libhidlbase",
         "libutils",
         "liblog",
-        "libbinder_ndk",
     ],
 
     product_variables: {

@@ -13,21 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  Copyright 2023 NXP
+ *
+ ******************************************************************************/
 
 #pragma once
-
-#include <vector>
-
-#include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
 #include <aidl/android/hardware/security/keymint/KeyParameter.h>
 #include <aidl/android/hardware/security/keymint/Tag.h>
+#include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
 #include <aidl/android/hardware/security/secureclock/ISecureClock.h>
-
 #include <keymaster/android_keymaster_messages.h>
 #include <keymaster/android_keymaster_utils.h>
+#include <vector>
 
 namespace aidl::android::hardware::security::keymint::km_utils {
-using namespace ::keymaster;
+using keymaster::KeymasterBlob;
 using ::ndk::ScopedAStatus;
 using secureclock::TimeStampToken;
 using std::vector;
@@ -90,4 +106,4 @@ class KmParamSet : public keymaster_key_param_set_t {
     ~KmParamSet() { keymaster_free_param_set(this); }
 };
 
-}  // namespace aidl::android::hardware::security::keymint::km_utils
+}  // namespace aidl::android::hardware::security::keymint

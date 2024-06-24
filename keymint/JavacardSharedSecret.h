@@ -14,30 +14,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2022 NXP
+ *  Copyright 2022-2023 NXP
  *
  ******************************************************************************/
 #pragma once
 
-#include <memory>
-#include <vector>
+#include "CborConverter.h"
+#include "JavacardSecureElement.h"
 
 #include <aidl/android/hardware/security/sharedsecret/BnSharedSecret.h>
 #include <aidl/android/hardware/security/sharedsecret/SharedSecretParameters.h>
-
-#include "CborConverter.h"
-#include "JavacardSecureElement.h"
+#include <memory>
+#include <vector>
 
 namespace aidl::android::hardware::security::sharedsecret {
 using ::keymint::javacard::CborConverter;
 using ::keymint::javacard::JavacardSecureElement;
 using ndk::ScopedAStatus;
+using std::optional;
 using std::shared_ptr;
 using std::vector;
 
 class JavacardSharedSecret : public BnSharedSecret {
   public:
-    explicit JavacardSharedSecret(shared_ptr<JavacardSecureElement> card) : card_(card) {}
+    explicit JavacardSharedSecret(shared_ptr<JavacardSecureElement> card)
+        : card_(std::move(card)) {}
     virtual ~JavacardSharedSecret() {}
 
     // Methods from ::ndk::ICInterface follow.
