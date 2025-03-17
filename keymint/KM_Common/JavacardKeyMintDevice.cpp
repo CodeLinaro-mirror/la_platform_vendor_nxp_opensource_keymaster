@@ -14,25 +14,24 @@
  * limitations under the License.
  */
 /******************************************************************************
-*
-*  The original Work has been changed by NXP.
-*
-*  Licensed under the Apache License, Version 2.0 (the "License");
-*  you may not use this file except in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*  http://www.apache.org/licenses/LICENSE-2.0
-*
-*  Unless required by applicable law or agreed to in writing, software
-*  distributed under the License is distributed on an "AS IS" BASIS,
-*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*  See the License for the specific language governing permissions and
-*  limitations under the License.
-*
-*  Copyright 2022 NXP
-*
-******************************************************************************/
-#define LOG_TAG "javacard.keymint.device.strongbox-impl"
+ *
+ *  The original Work has been changed by NXP.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  Copyright 2022,2024-2025 NXP
+ *
+ ******************************************************************************/
 #include "JavacardKeyMintDevice.h"
 
 #include <regex.h>
@@ -51,10 +50,11 @@
 #include <keymaster/android_keymaster_messages.h>
 #include <keymaster/wrapped_key.h>
 
-#include "JavacardKeyMintOperation.h"
 #include "JavacardSharedSecret.h"
 
-namespace aidl::android::hardware::security::keymint {
+namespace keymint::javacard {
+using aidl::android::hardware::security::keymint::Tag;
+namespace km_utils = ::aidl::android::hardware::security::keymint::km_utils;
 using cppbor::Bstr;
 using cppbor::EncodedItem;
 using cppbor::Uint;
@@ -90,7 +90,6 @@ ScopedAStatus JavacardKeyMintDevice::getHardwareInfo(KeyMintHardwareInfo* info) 
         LOG(INFO) << "Returning defaultHwInfo in getHardwareInfo.";
         return defaultHwInfo(info);
     }
-    card_->initializeJavacard();
     info->keyMintName = std::move(optKeyMintName.value());
     info->keyMintAuthorName = std::move(optKeyMintAuthorName.value());
     info->timestampTokenRequired = (optTsRequired.value() == 1);
@@ -312,7 +311,7 @@ ScopedAStatus JavacardKeyMintDevice::destroyAttestationIds() {
 ScopedAStatus JavacardKeyMintDevice::begin(KeyPurpose purpose, const std::vector<uint8_t>& keyBlob,
                                            const std::vector<KeyParameter>& params,
                                            const std::optional<HardwareAuthToken>& authToken,
-                                           BeginResult* result) {
+                                           SEKeyMintBeginResult* beginResult) {
     card_->sendPendingEvents();
     cppbor::Array array;
     std::vector<uint8_t> response;
@@ -338,29 +337,18 @@ ScopedAStatus JavacardKeyMintDevice::begin(KeyPurpose purpose, const std::vector
         LOG(ERROR) << "Error in decoding the response in begin.";
         return km_utils::kmError2ScopedAStatus(KM_ERROR_UNKNOWN_ERROR);
     }
-    result->params = std::move(keyParams.value());
-    result->challenge = optOpHandle.value();
-    result->operation = ndk::SharedRefBase::make<JavacardKeyMintOperation>(
-        static_cast<keymaster_operation_handle_t>(optOpHandle.value()),
-        static_cast<BufferingMode>(optBufMode.value()), optMacLength.value(), card_);
+    beginResult->params = std::move(keyParams.value());
+    beginResult->challenge = optOpHandle.value();
+    beginResult->bufMode = optBufMode.value();
+    beginResult->opHandle = optOpHandle.value();
+    beginResult->macLength = optMacLength.value();
     return ScopedAStatus::ok();
 }
 
 ScopedAStatus
 JavacardKeyMintDevice::deviceLocked(bool passwordOnly,
                                     const std::optional<TimeStampToken>& timestampToken) {
-    Array request;
-    int8_t password = 1;
-    if (!passwordOnly) {
-        password = 0;
-    }
-    request.add(Uint(password));
-    cbor_.addTimeStampToken(request, timestampToken.value_or(TimeStampToken()));
-    auto [item, err] = card_->sendRequest(Instruction::INS_DEVICE_LOCKED_CMD, request);
-    if (err != KM_ERROR_OK) {
-        return km_utils::kmError2ScopedAStatus(err);
-    }
-    return ScopedAStatus::ok();
+    return km_utils::kmError2ScopedAStatus(KM_ERROR_UNIMPLEMENTED);
 }
 
 ScopedAStatus JavacardKeyMintDevice::earlyBootEnded() {
@@ -396,15 +384,22 @@ ScopedAStatus JavacardKeyMintDevice::getKeyCharacteristics(
 }
 
 ScopedAStatus JavacardKeyMintDevice::getRootOfTrustChallenge(std::array<uint8_t, 16>* challenge) {
+#ifdef INIT_USING_SEHAL_TRANSPORT
+    auto [item, err] = card_->sendRequestSeHal(Instruction::INS_GET_ROT_CHALLENGE_CMD);
+#else
     auto [item, err] = card_->sendRequest(Instruction::INS_GET_ROT_CHALLENGE_CMD);
+#endif
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Error in sending in getRootOfTrustChallenge.";
+#ifdef INIT_USING_SEHAL_TRANSPORT
+        card_->closeSEHal();
+#endif
         return km_utils::kmError2ScopedAStatus(err);
     }
     auto optChallenge = cbor_.getByteArrayVec(item, 1);
-    if (!optChallenge) {
-        LOG(ERROR) << "Error in sending in upgradeKey.";
-        return km_utils::kmError2ScopedAStatus(KM_ERROR_UNKNOWN_ERROR);
+    if (!optChallenge || optChallenge->size() != 16) {
+        LOG(ERROR) << "Invalid challenge size received";
+        return km_utils::kmError2ScopedAStatus(KM_ERROR_INVALID_ARGUMENT);
     }
     std::move(optChallenge->begin(), optChallenge->begin() + 16, challenge->begin());
     return ScopedAStatus::ok();
@@ -417,8 +412,16 @@ ScopedAStatus JavacardKeyMintDevice::getRootOfTrust(const std::array<uint8_t, 16
 
 ScopedAStatus JavacardKeyMintDevice::sendRootOfTrust(const std::vector<uint8_t>& rootOfTrust) {
     cppbor::Array request;
+    std::unique_ptr<Item> item;
+    keymaster_error_t err;
     request.add(EncodedItem(rootOfTrust));  // taggedItem.
-    auto [item, err] = card_->sendRequest(Instruction::INS_SEND_ROT_DATA_CMD, request);
+#ifdef INIT_USING_SEHAL_TRANSPORT
+    std::tie(item, err) =
+        card_->sendRequestSeHal(Instruction::INS_SEND_ROT_DATA_CMD, request.encode());
+    card_->closeSEHal();
+#else
+    std::tie(item, err) = card_->sendRequest(Instruction::INS_SEND_ROT_DATA_CMD, request.encode());
+#endif
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Error in sending in sendRootOfTrust.";
         return km_utils::kmError2ScopedAStatus(err);
@@ -442,8 +445,10 @@ JavacardKeyMintDevice::parseWrappedKey(const vector<uint8_t>& wrappedKeyData,
     KeymasterBlob kmWrappedKeyDescription;
 
     size_t keyDataLen = wrappedKeyData.size();
-    uint8_t* keyData = dup_buffer(wrappedKeyData.data(), keyDataLen);
-    keymaster_key_blob_t keyMaterial = {keyData, keyDataLen};
+
+    std::unique_ptr<uint8_t[]> keyData(dup_buffer(wrappedKeyData.data(), keyDataLen));
+    keymaster_key_blob_t keyMaterial = {keyData.get(), keyDataLen};
+
     keymaster_error_t error =
         parse_wrapped_key(KeymasterKeyBlob(keyMaterial), &kmIv, &kmTransitKey, &kmSecureKey, &kmTag,
                           &authSet, &kmKeyFormat, &kmWrappedKeyDescription);
@@ -472,4 +477,28 @@ binder_status_t JavacardKeyMintDevice::dump(int /* fd */, const char** /* p */, 
     return STATUS_OK;
 }
 
-}  // namespace aidl::android::hardware::security::keymint
+ScopedAStatus
+JavacardKeyMintDevice::setAdditionalAttestationInfo(const vector<KeyParameter>& keyParams) {
+    LOG(INFO) << "JavacardKeyMint::setAdditionalAttestationInfo Enter";
+    if (!keyParams.empty()) {
+        cppbor::Array request;
+        cbor_.addKeyparameters(request, keyParams);
+        auto [item, err] =
+            card_->sendRequest(Instruction::INS_SET_ADDITIONAL_ATTESTATION_INFO, request.encode());
+#ifdef NXP_EXTNS
+        if (err == KM_ERROR_SECURE_HW_COMMUNICATION_FAILED) {
+            LOG(ERROR)
+                << "Error: SECURE_HW_COOMMUNICATION_FAILED for setAdditionalAttestationInfo.";
+            card_->cacheModuleHash(keyParams);
+        }
+#endif
+        if (err != KM_ERROR_OK) {
+            LOG(ERROR) << "Error in sending in setAdditionalAttestationInfo.";
+            return km_utils::kmError2ScopedAStatus(err);
+        }
+        LOG(INFO) << "JavacardKeyMint::setAdditionalAttestationInfo success";
+    }
+    return ScopedAStatus::ok();
+}
+
+}  // namespace keymint::javacard

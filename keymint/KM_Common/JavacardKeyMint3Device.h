@@ -29,17 +29,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2022-2023 NXP
+ *  Copyright 2025 NXP
  *
  ******************************************************************************/
+
 #pragma once
 
-#include "CborConverter.h"
-#include "JavacardSecureElement.h"
 #include <aidl/android/hardware/security/keymint/BnKeyMintDevice.h>
 #include <aidl/android/hardware/security/keymint/BnKeyMintOperation.h>
 #include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
 #include <aidl/android/hardware/security/sharedsecret/SharedSecretParameters.h>
+
+#include "CborConverter.h"
+#include "JavacardKeyMintDevice.h"
+#include "JavacardSecureElement.h"
 
 namespace aidl::android::hardware::security::keymint {
 using cppbor::Item;
@@ -47,22 +50,18 @@ using ::keymint::javacard::CborConverter;
 using ::keymint::javacard::JavacardSecureElement;
 using ndk::ScopedAStatus;
 using secureclock::TimeStampToken;
+using std::array;
 using std::optional;
 using std::shared_ptr;
 using std::vector;
 
-class JavacardKeyMintDevice : public BnKeyMintDevice {
+class JavacardKeyMint3Device : public BnKeyMintDevice {
   public:
-    explicit JavacardKeyMintDevice(shared_ptr<JavacardSecureElement> card)
-        : securitylevel_(SecurityLevel::STRONGBOX), card_(std::move(card)),
-          isEarlyBootEventPending(true) {
-        card_->initializeJavacard();
-    }
-    virtual ~JavacardKeyMintDevice() {}
-
-    // Methods from ::ndk::ICInterface follow.
+    explicit JavacardKeyMint3Device(shared_ptr<JavacardSecureElement> card,
+                                    shared_ptr<::keymint::javacard::JavacardKeyMintDevice> device)
+        : securitylevel_(SecurityLevel::STRONGBOX), card_(card), device_(device) {}
+    virtual ~JavacardKeyMint3Device() {}
     binder_status_t dump(int fd, const char** args, uint32_t num_args) override;
-
     ScopedAStatus getHardwareInfo(KeyMintHardwareInfo* info) override;
 
     ScopedAStatus addRngEntropy(const vector<uint8_t>& data) override;
@@ -91,10 +90,10 @@ class JavacardKeyMintDevice : public BnKeyMintDevice {
     ScopedAStatus deleteAllKeys() override;
     ScopedAStatus destroyAttestationIds() override;
 
-    virtual ScopedAStatus begin(KeyPurpose in_purpose, const std::vector<uint8_t>& in_keyBlob,
-                                const std::vector<KeyParameter>& in_params,
-                                const std::optional<HardwareAuthToken>& in_authToken,
-                                BeginResult* _aidl_return) override;
+    ScopedAStatus begin(KeyPurpose in_purpose, const std::vector<uint8_t>& in_keyBlob,
+                        const std::vector<KeyParameter>& in_params,
+                        const std::optional<HardwareAuthToken>& in_authToken,
+                        BeginResult* _aidl_return) override;
 
     ScopedAStatus deviceLocked(bool passwordOnly,
                                const optional<TimeStampToken>& timestampToken) override;
@@ -109,39 +108,18 @@ class JavacardKeyMintDevice : public BnKeyMintDevice {
     ScopedAStatus convertStorageKeyToEphemeral(const std::vector<uint8_t>& storageKeyBlob,
                                                std::vector<uint8_t>* ephemeralKeyBlob) override;
 
-    ScopedAStatus getRootOfTrustChallenge(std::array<uint8_t, 16>* _aidl_return) override;
+    ScopedAStatus getRootOfTrustChallenge(array<uint8_t, 16>* challenge) override;
 
-    ScopedAStatus getRootOfTrust(const std::array<uint8_t, 16>& in_challenge,
-                                  std::vector<uint8_t>* _aidl_return) override;
+    ScopedAStatus getRootOfTrust(const array<uint8_t, 16>& challenge,
+                                 vector<uint8_t>* rootOfTrust) override;
 
-    ScopedAStatus sendRootOfTrust(const std::vector<uint8_t>& in_rootOfTrust) override;
+    ScopedAStatus sendRootOfTrust(const vector<uint8_t>& rootOfTrust) override;
 
   private:
-    keymaster_error_t parseWrappedKey(const vector<uint8_t>& wrappedKeyData,
-                                      std::vector<uint8_t>& iv, std::vector<uint8_t>& transitKey,
-                                      std::vector<uint8_t>& secureKey, std::vector<uint8_t>& tag,
-                                      vector<KeyParameter>& authList, KeyFormat& keyFormat,
-                                      std::vector<uint8_t>& wrappedKeyDescription);
-
-    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendBeginImportWrappedKeyCmd(
-        const std::vector<uint8_t>& transitKey, const std::vector<uint8_t>& wrappingKeyBlob,
-        const std::vector<uint8_t>& maskingKey, const vector<KeyParameter>& unwrappingParams);
-
-    std::tuple<std::unique_ptr<Item>, keymaster_error_t>
-    sendFinishImportWrappedKeyCmd(const vector<KeyParameter>& keyParams, KeyFormat keyFormat,
-                                  const std::vector<uint8_t>& secureKey,
-                                  const std::vector<uint8_t>& tag, const std::vector<uint8_t>& iv,
-                                  const std::vector<uint8_t>& wrappedKeyDescription,
-                                  int64_t passwordSid, int64_t biometricSid);
-
-    ScopedAStatus defaultHwInfo(KeyMintHardwareInfo* info);
-
-    void handleSendEarlyBootEndedEvent();
-
     const SecurityLevel securitylevel_;
     const shared_ptr<JavacardSecureElement> card_;
+    shared_ptr<::keymint::javacard::JavacardKeyMintDevice> device_;
     CborConverter cbor_;
-    bool isEarlyBootEventPending;
 };
 
 }  // namespace aidl::android::hardware::security::keymint
