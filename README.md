@@ -1,7 +1,6 @@
 # nfcandroid_keymint_hidlimpl
 #
 #### Git Repository
-
 #### Supported Version on "br_ar_16_aosp_mainline" branch
 | Android Version        | NXP Release          | NXP Tag  |
 | :-------------: |:---------------------:| :-----:|
