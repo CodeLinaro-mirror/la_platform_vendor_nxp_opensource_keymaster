@@ -29,7 +29,7 @@
  ** See the License for the specific language governing permissions and
  ** limitations under the License.
  **
- ** Copyright 2022-2023 NXP
+ ** Copyright 2022-2023,2025 NXP
  **
  *********************************************************************************/
 
@@ -43,7 +43,7 @@ const std::vector<uint8_t> gAuthSecretAppletAID = {0xA0, 0x00, 0x00, 0x03, 0x96,
                                                    0x54, 0x53, 0x00, 0x00, 0x00,
                                                    0x01, 0x00, 0x52};
 
-static OmapiTransport *gTransport = new OmapiTransport(gAuthSecretAppletAID);
+static std::shared_ptr<OmapiTransport> gTransport = OmapiTransport::make(gAuthSecretAppletAID);
 static AuthSecretHelper *gAuthSecretImplInstance = AuthSecretHelper::getInstance();
 
 namespace aidl {

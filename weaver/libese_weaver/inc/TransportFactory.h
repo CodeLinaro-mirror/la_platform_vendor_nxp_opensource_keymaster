@@ -63,14 +63,14 @@ class TransportFactory {
     TransportFactory(bool isEmulator, const std::vector<uint8_t>& mAppletAID) {
         if (!isEmulator) {
 #ifdef OMAPI_TRANSPORT
-            mTransport = std::unique_ptr<OmapiTransport>(new OmapiTransport(mAppletAID));
+            mTransport = OmapiTransport::make(mAppletAID);
 #else
-            mTransport = std::unique_ptr<HalToHalTransport>(new HalToHalTransport(mAppletAID));
+            mTransport = std::shared_ptr<HalToHalTransport>(new HalToHalTransport(mAppletAID));
 #endif
         }
 #ifndef NXP_EXTNS
         else
-            mTransport = std::unique_ptr<SocketTransport>(new SocketTransport(mAppletAID));
+            mTransport = std::shared_ptr<SocketTransport>(new SocketTransport(mAppletAID));
 #endif
     }
 
@@ -117,7 +117,7 @@ class TransportFactory {
     /**
      * Holds the instance of either OmapiTransport class or SocketTransport class.
      */
-    std::unique_ptr<ITransport> mTransport;
+    std::shared_ptr<ITransport> mTransport;
 
 };
 } // namespace se_transport

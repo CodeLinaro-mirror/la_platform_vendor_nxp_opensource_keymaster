@@ -29,7 +29,7 @@
  //
  // Copyright 2022-2023 NXP
  //
-
+/*
 cc_library {
     name: "libjc_keymint-nxp",
     defaults: [
@@ -124,3 +124,5 @@ prebuilt_etc {
     vendor: true,
     src: "android.hardware.authsecret-service.nxp.xml",
 }
+
+*/

@@ -29,17 +29,18 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 *
-*  Copyright 2022-2024 NXP
+*  Copyright 2022-2025 NXP
 *
 ******************************************************************************/
 #pragma once
-
+#include <keymaster/km_version.h>
 #include <ITransport.h>
 #include "CborConverter.h"
 
 #define APDU_CLS 0x80
 //#define APDU_P1 0x50
-#define APDU_P1 0x60
+#define APDU_KEYMINT_3_P1 0x60
+#define APDU_KEYMINT_4_P1 0x70
 #define APDU_P2 0x00
 #define APDU_RESP_STATUS_OK 0x9000
 
@@ -48,6 +49,7 @@
 #define KEYMINT_VENDOR_CMD_APDU_START 0xD0
 
 namespace keymint::javacard {
+using keymaster::KmVersion;
 using std::shared_ptr;
 using std::vector;
 
@@ -78,7 +80,7 @@ enum class Instruction {
     INS_UPDATE_AAD_OPERATION_CMD = KEYMINT_CMD_APDU_START + 23,
     INS_BEGIN_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 24,
     INS_FINISH_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 25,
-    //INS_INIT_STRONGBOX_CMD = KEYMINT_CMD_APDU_START + 26,
+    // INS_INIT_STRONGBOX_CMD = KEYMINT_CMD_APDU_START + 26,
     INS_INIT_STRONGBOX_CMD = KEYMINT_VENDOR_CMD_APDU_START + 9,
     // RKP Commands
     INS_GET_RKP_HARDWARE_INFO = KEYMINT_CMD_APDU_START + 27,
@@ -95,33 +97,48 @@ enum class Instruction {
     INS_GET_ROT_CHALLENGE_CMD = KEYMINT_CMD_APDU_START + 45,
     INS_GET_ROT_DATA_CMD = KEYMINT_CMD_APDU_START + 46,
     INS_SEND_ROT_DATA_CMD = KEYMINT_CMD_APDU_START + 47,
+    // MODULE HASH
+    INS_SET_ADDITIONAL_ATTESTATION_INFO = KEYMINT_CMD_APDU_START + 49,
 };
+#ifdef NXP_EXTNS
+enum CryptoOperationState { STARTED = 0, FINISHED };
+#endif
 
 class JavacardSecureElement {
   public:
-    explicit JavacardSecureElement(shared_ptr<ITransport> transport)
-        : transport_(std::move(transport)), isEarlyBootEndedPending(false),
-          isDeleteAllKeysPending(false), isCardInitialized(false) {
-      transport_->openConnection();
+    explicit JavacardSecureElement(KmVersion version, shared_ptr<ITransport> transport)
+        : version_(version), transport_(std::move(transport)),
+          isEarlyBootEndedPending(false),
+          isDeleteAllKeysPending(false),
+          isCardInitPending(true) {
+        transport_->openConnection();
     }
     virtual ~JavacardSecureElement() { transport_->closeConnection(); }
 
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins,
-                                                                     Array& request);
+                                                                     const Array& request);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins);
-    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins,
-                                                                     std::vector<uint8_t>& command);
+    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(
+        Instruction ins, const std::vector<uint8_t>& command);
 
-    keymaster_error_t sendData(Instruction ins, std::vector<uint8_t>& inData,
+    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequestSeHal(
+        Instruction ins, const std::vector<uint8_t>& command);
+    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequestSeHal(Instruction ins);
+
+    bool closeSEHal();
+
+    keymaster_error_t sendData(Instruction ins, const std::vector<uint8_t>& inData,
                                std::vector<uint8_t>& response);
-
-    keymaster_error_t constructApduMessage(Instruction& ins, std::vector<uint8_t>& inputData,
+    keymaster_error_t constructApduMessage(Instruction& ins, const std::vector<uint8_t>& inputData,
                                            std::vector<uint8_t>& apduOut);
     keymaster_error_t initializeJavacard();
     void sendPendingEvents();
     void setEarlyBootEndedPending();
     void setDeleteAllKeysPending();
-
+#ifdef NXP_EXTNS
+    void setOperationState(CryptoOperationState state);
+    void cacheModuleHash(const vector<KeyParameter>& keyParams);
+#endif
     inline uint16_t getApduStatus(std::vector<uint8_t>& inputData) {
         // Last two bytes are the status SW0SW1
         uint8_t SW0 = inputData.at(inputData.size() - 2);
@@ -130,10 +147,23 @@ class JavacardSecureElement {
     }
 
   private:
+    bool initSEHal();
+    keymaster_error_t sendData(const std::shared_ptr<ITransport>& transport, Instruction ins,
+                               const std::vector<uint8_t>& inData, std::vector<uint8_t>& response);
+    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(
+        const std::shared_ptr<ITransport>& transport, Instruction ins,
+        const std::vector<uint8_t>& command);
+    keymaster_error_t getP1(uint8_t* p1);
+
+#ifdef NXP_EXTNS
+    vector<KeyParameter> moduleHash;
+#endif
+    KmVersion version_;
     shared_ptr<ITransport> transport_;
+    shared_ptr<ITransport> seHalTransport;
     bool isEarlyBootEndedPending;
     bool isDeleteAllKeysPending;
-    bool isCardInitialized;
+    bool isCardInitPending;
     CborConverter cbor_;
 };
 }  // namespace keymint::javacard

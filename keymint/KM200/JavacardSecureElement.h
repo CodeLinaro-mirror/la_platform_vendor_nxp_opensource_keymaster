@@ -29,7 +29,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2022-2023 NXP
+ *  Copyright 2022-2024 NXP
  *
  ******************************************************************************/
 #pragma once
@@ -96,14 +96,19 @@ enum class Instruction {
     INS_SEND_ROT_DATA_CMD = KEYMINT_CMD_APDU_START + 47,
 };
 
+#ifdef NXP_EXTNS
+enum CryptoOperationState { STARTED = 0, FINISHED };
+#endif
+
 class JavacardSecureElement {
   public:
     explicit JavacardSecureElement(shared_ptr<ITransport> transport,
                                    uint32_t osVersion, uint32_t osPatchLevel,
                                    uint32_t vendorPatchLevel)
         : transport_(std::move(transport)), osVersion_(osVersion),
-          osPatchLevel_(osPatchLevel), vendorPatchLevel_(vendorPatchLevel) {
-      transport_->openConnection();
+          osPatchLevel_(osPatchLevel), vendorPatchLevel_(vendorPatchLevel),
+          isCardInitialized_(false) {
+        transport_->openConnection();
     }
     virtual ~JavacardSecureElement() { transport_->closeConnection(); }
 
@@ -125,10 +130,14 @@ class JavacardSecureElement {
         return (SW0 << 8 | SW1);
     }
 
+#ifdef NXP_EXTNS
+    void setOperationState(CryptoOperationState state);
+#endif
     shared_ptr<ITransport> transport_;
     uint32_t osVersion_;
     uint32_t osPatchLevel_;
     uint32_t vendorPatchLevel_;
+    bool isCardInitialized_;
     CborConverter cbor_;
 };
 }  // namespace keymint::javacard

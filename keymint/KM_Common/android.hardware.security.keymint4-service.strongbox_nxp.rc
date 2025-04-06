@@ -1,0 +1,4 @@
+service vendor.keymint-strongbox /vendor/bin/hw/android.hardware.security.keymint4-service.strongbox-nxp-qti
+    class early_hal
+    user vendor_nxp_strongbox
+    group vendor_nxp_strongbox
