@@ -107,10 +107,12 @@ enum CryptoOperationState { STARTED = 0, FINISHED };
 class JavacardSecureElement {
   public:
     explicit JavacardSecureElement(KmVersion version, shared_ptr<ITransport> transport)
-        : version_(version), transport_(std::move(transport)),
+        : version_(version),
+          transport_(std::move(transport)),
           isEarlyBootEndedPending(false),
           isDeleteAllKeysPending(false),
           isCardInitPending(true) {
+        moduleHash.clear();
         transport_->openConnection();
     }
     virtual ~JavacardSecureElement() { transport_->closeConnection(); }
