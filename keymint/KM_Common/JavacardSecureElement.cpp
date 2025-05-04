@@ -116,6 +116,7 @@ void JavacardSecureElement::sendPendingEvents() {
             } else {
                 LOG(INFO) << "setAdditionalAttestationInfo success";
             }
+            moduleHash.clear();
         } else {
             LOG(INFO) << "setAdditionalAttestationInfo keyParams is empty";
         }
