@@ -484,24 +484,22 @@ JavacardKeyMintDevice::setAdditionalAttestationInfo(const vector<KeyParameter>& 
         cppbor::Array request;
         cbor_.addKeyparameters(request, keyParams);
         auto [item, err] =
+#ifdef NXP_EXTNS
 #ifdef INIT_USING_SEHAL_TRANSPORT
             card_->sendRequestSeHal(Instruction::INS_SET_ADDITIONAL_ATTESTATION_INFO,
                                     request.encode());
-            card_->closeSEHal();
 #else
             card_->sendRequest(Instruction::INS_SET_ADDITIONAL_ATTESTATION_INFO, request.encode());
-#ifdef NXP_EXTNS
         if (err == KM_ERROR_SECURE_HW_COMMUNICATION_FAILED) {
             LOG(ERROR)
                 << "Error: SECURE_HW_COOMMUNICATION_FAILED for setAdditionalAttestationInfo.";
             card_->cacheModuleHash(keyParams);
+            error = KM_ERROR_OK;  // Mark cmd successful
         }
-#endif   //NXP_EXTNS
-#endif   // INIT_USING_SEHAL_TRANSPORT
-        if (err != KM_ERROR_OK) {
-            LOG(ERROR) << "Error in sending in setAdditionalAttestationInfo err " << err;
-            err = KM_ERROR_OK;
-        }
+#endif  // INIT_USING_SEHAL_TRANSPORT
+#else
+            card_->sendRequest(Instruction::INS_SET_ADDITIONAL_ATTESTATION_INFO, request.encode());
+#endif  // NXP_EXTNS
         if (err != KM_ERROR_OK) {
             LOG(ERROR) << "Error in sending in setAdditionalAttestationInfo.";
             return km_utils::kmError2ScopedAStatus(err);
