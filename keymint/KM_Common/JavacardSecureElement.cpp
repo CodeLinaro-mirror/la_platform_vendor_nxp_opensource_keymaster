@@ -108,7 +108,7 @@ void JavacardSecureElement::sendPendingEvents() {
         if (!moduleHash.empty()) {
             cppbor::Array request;
             cbor_.addKeyparameters(request, moduleHash);
-            LOG(INFO) << "Send pending setAdditionalAttestationInfo";
+            LOG(DEBUG) << "Send pending setAdditionalAttestationInfo";
             auto [item, err] =
                 sendRequest(Instruction::INS_SET_ADDITIONAL_ATTESTATION_INFO, request.encode());
             if (err != KM_ERROR_OK) {
@@ -118,7 +118,7 @@ void JavacardSecureElement::sendPendingEvents() {
             }
             moduleHash.clear();
         } else {
-            LOG(INFO) << "setAdditionalAttestationInfo keyParams is empty";
+            LOG(DEBUG) << "setAdditionalAttestationInfo keyParams is empty";
         }
 #endif
     }
@@ -289,7 +289,7 @@ void JavacardSecureElement::setOperationState(CryptoOperationState state) {
     transport_->setCryptoOperationState(state);
 }
 void JavacardSecureElement::cacheModuleHash(const vector<KeyParameter>& keyParams) {
-    LOG(ERROR) << "cacheModuleHash";
+    LOG(INFO) << "cacheModuleHash";
     moduleHash = keyParams;
 }
 #endif
