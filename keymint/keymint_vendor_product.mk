@@ -2,8 +2,8 @@
 ESE_VENDOR_KEYMINT += android.hardware.security.keymint-service.strongbox-nxp
 
 ifeq ($(strip $(ENABLE_ESE_KEYMINT_SPLIT_MANIFEST)),true)
-ESE_VENDOR_KEYMINT += android.hardware.security.keymint-service.strongbox.xml
-ESE_VENDOR_KEYMINT += android.hardware.security.sharedsecret-service.strongbox.xml
+ESE_VENDOR_KEYMINT += android.hardware.security.keymint-service.strongbox_nxp.xml
+ESE_VENDOR_KEYMINT += android.hardware.security.sharedsecret-service.strongbox_nxp.xml
 endif
 
 ifeq ($(strip $(ENABLE_ESE_KEYMINT_FEATURE_XML)),true)

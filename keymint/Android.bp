@@ -182,14 +182,14 @@ sb_cc_binary {
 }
 
 prebuilt_etc {
-    name: "android.hardware.security.keymint-service.strongbox.xml",
+    name: "android.hardware.security.keymint-service.strongbox_nxp.xml",
     src: "android.hardware.security.keymint-service.strongbox.xml",
     relative_install_path: "vintf/manifest",
     vendor: true,
 }
 
 prebuilt_etc {
-    name: "android.hardware.security.sharedsecret-service.strongbox.xml",
+    name: "android.hardware.security.sharedsecret-service.strongbox_nxp.xml",
     src: "android.hardware.security.sharedsecret-service.strongbox.xml",
     relative_install_path: "vintf/manifest",
     vendor: true,
