@@ -178,10 +178,6 @@ cc_binary {
     name: "android.hardware.security.keymint4-service.strongbox-nxp-qti",
     relative_install_path: "hw",
     init_rc: ["android.hardware.security.keymint4-service.strongbox_nxp.rc"],
-    vintf_fragments: [
-        "android.hardware.security.keymint4-service.strongbox_nxp.xml",
-        "android.hardware.security.sharedsecret-service.strongbox4_nxp.xml",
-    ],
     vendor: true,
     cflags: [
         "-Wall",
@@ -235,4 +231,18 @@ prebuilt_etc {
     sub_dir: "permissions",
     vendor: true,
     src: "android.hardware.hardware_keystore.jc-strongbox-keymint4_nxp.xml",
+}
+
+prebuilt_etc {
+    name: "android.hardware.security.keymint4-service.strongbox_nxp.xml",
+    src: "android.hardware.security.keymint4-service.strongbox_nxp.xml",
+    relative_install_path: "vintf/manifest",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "android.hardware.security.sharedsecret-service.strongbox4_nxp.xml",
+    src: "android.hardware.security.sharedsecret-service.strongbox4_nxp.xml",
+    relative_install_path: "vintf/manifest",
+    vendor: true,
 }
