@@ -52,6 +52,9 @@
 
 #include "JavacardSharedSecret.h"
 
+#define PROP_KEYMINT_TEST "persist.vendor.keymint.test"
+#define PROP_VENDOR_BUILD_TYPE "ro.vendor.build.type"
+
 namespace keymint::javacard {
 using aidl::android::hardware::security::keymint::Tag;
 namespace km_utils = ::aidl::android::hardware::security::keymint::km_utils;
@@ -477,6 +480,16 @@ binder_status_t JavacardKeyMintDevice::dump(int /* fd */, const char** /* p */, 
     return STATUS_OK;
 }
 
+static bool isErrorOverrideBlocked() {
+    constexpr char PROP_USER_BUILD[] = "user";
+    constexpr char PROP_ALLOW_TEST[] = "allow";
+
+    const std::string buildType = ::android::base::GetProperty(PROP_VENDOR_BUILD_TYPE, "");
+    const std::string keymintTest = ::android::base::GetProperty(PROP_KEYMINT_TEST, "");
+
+    return (buildType == PROP_USER_BUILD) || (keymintTest == PROP_ALLOW_TEST);
+}
+
 ScopedAStatus
 JavacardKeyMintDevice::setAdditionalAttestationInfo(const vector<KeyParameter>& keyParams) {
     LOG(INFO) << "JavacardKeyMint::setAdditionalAttestationInfo Enter";
@@ -501,8 +514,13 @@ JavacardKeyMintDevice::setAdditionalAttestationInfo(const vector<KeyParameter>& 
             card_->sendRequest(Instruction::INS_SET_ADDITIONAL_ATTESTATION_INFO, request.encode());
 #endif  // NXP_EXTNS
         if (err != KM_ERROR_OK) {
-            LOG(ERROR) << "Error in sending in setAdditionalAttestationInfo.";
-            return km_utils::kmError2ScopedAStatus(err);
+            if (isErrorOverrideBlocked()) {
+                LOG(ERROR) << "Error in sending in setAdditionalAttestationInfo";
+                return km_utils::kmError2ScopedAStatus(err);
+            } else {
+                LOG(ERROR) << "Override Error in sending in setAdditionalAttestationInfo ";
+                return ScopedAStatus::ok();
+            }
         }
     }
     return ScopedAStatus::ok();

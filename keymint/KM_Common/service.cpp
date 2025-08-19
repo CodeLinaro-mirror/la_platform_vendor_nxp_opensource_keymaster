@@ -82,7 +82,8 @@ template <typename T, class... Args> std::shared_ptr<T> addService(Args&&... arg
     return ser;
 }
 
-int main() {
+int main(int argc, char** argv) {
+    android::base::InitLogging(argv, android::base::LogdLogger(android::base::SYSTEM));
     LOG(INFO) << "Starting javacard strongbox service";
     ABinderProcess_setThreadPoolMaxThreadCount(0);
     // Javacard Secure Element
