@@ -17,6 +17,12 @@ TARGET_USES_ESE_WEAVER := true
 ENABLE_ESE_WEAVER_SPLIT_MANIFEST := false
 endif
 
+#malabar specific build rules
+ifeq ($(TARGET_BOARD_PLATFORM),malabar)
+TARGET_USES_ESE_WEAVER := true
+ENABLE_ESE_WEAVER_SPLIT_MANIFEST := false
+endif
+
 #chora specific build rules
 ifeq ($(TARGET_BOARD_PLATFORM),chora)
 TARGET_USES_ESE_WEAVER := true
