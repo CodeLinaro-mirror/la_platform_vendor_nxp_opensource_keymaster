@@ -128,7 +128,6 @@ cc_library {
     name: "libjc_keymint4_nxp",
     defaults: [
         "keymaster_defaults",
-        "keymint_use_latest_hal_aidl_ndk_shared",
     ],
     srcs: [
         "CborConverter.cpp",
@@ -161,6 +160,7 @@ cc_library {
         "libjc_keymint_transport_nxp",
         "libbinder_ndk",
         "libmemunreachable",
+        "android.hardware.security.keymint-V4-ndk",
         "android.hardware.secure_element-V1-ndk",
     ],
     export_include_dirs: [
@@ -185,9 +185,6 @@ cc_binary {
         "-DOMAPI_TRANSPORT",
         "-DNXP_EXTNS",
     ],
-    defaults: [
-        "keymint_use_latest_hal_aidl_ndk_shared",
-    ],
     shared_libs: [
         "android.hardware.security.rkp-V3-ndk",
         "android.hardware.security.sharedsecret-V1-ndk",
@@ -203,6 +200,7 @@ cc_binary {
         "liblog",
         "libutils",
         "libhidlbase",
+        "android.hardware.security.keymint-V4-ndk",
         "android.hardware.secure_element-V1-ndk",
     ],
     srcs: [
