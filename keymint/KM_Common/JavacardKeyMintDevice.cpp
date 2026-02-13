@@ -52,6 +52,10 @@
 
 #include "JavacardSharedSecret.h"
 
+#define PROP_KEYMINT_TEST "persist.vendor.keymint.test"
+#define PROP_BUILD_FINGERPRINT "ro.build.fingerprint"
+#define PROP_DEBUGGABLE "ro.debuggable"
+
 namespace keymint::javacard {
 using aidl::android::hardware::security::keymint::Tag;
 namespace km_utils = ::aidl::android::hardware::security::keymint::km_utils;
@@ -477,6 +481,20 @@ binder_status_t JavacardKeyMintDevice::dump(int /* fd */, const char** /* p */, 
     return STATUS_OK;
 }
 
+static bool isErrorOverrideBlocked() {
+    constexpr char kQtiBuildPrefix[] = "qti/";
+    constexpr char kAllowTestValue[] = "true";
+
+    const bool isDebuggable = ::android::base::GetIntProperty(PROP_DEBUGGABLE, 0) == 1;
+    const std::string buildFingerprint = ::android::base::GetProperty(PROP_BUILD_FINGERPRINT, "");
+    const std::string keymintTestProp = ::android::base::GetProperty(PROP_KEYMINT_TEST, "");
+
+    const bool isQtiBuild = !buildFingerprint.empty() &&
+                            buildFingerprint.find(kQtiBuildPrefix) != std::string::npos;
+
+    return ((!isQtiBuild && !isDebuggable) || (keymintTestProp == kAllowTestValue));
+}
+
 ScopedAStatus
 JavacardKeyMintDevice::setAdditionalAttestationInfo(const vector<KeyParameter>& keyParams) {
     LOG(INFO) << "JavacardKeyMint::setAdditionalAttestationInfo Enter";
@@ -484,27 +502,30 @@ JavacardKeyMintDevice::setAdditionalAttestationInfo(const vector<KeyParameter>& 
         cppbor::Array request;
         cbor_.addKeyparameters(request, keyParams);
         auto [item, err] =
+#ifdef NXP_EXTNS
 #ifdef INIT_USING_SEHAL_TRANSPORT
             card_->sendRequestSeHal(Instruction::INS_SET_ADDITIONAL_ATTESTATION_INFO,
                                     request.encode());
-            card_->closeSEHal();
 #else
             card_->sendRequest(Instruction::INS_SET_ADDITIONAL_ATTESTATION_INFO, request.encode());
-#ifdef NXP_EXTNS
         if (err == KM_ERROR_SECURE_HW_COMMUNICATION_FAILED) {
             LOG(ERROR)
                 << "Error: SECURE_HW_COOMMUNICATION_FAILED for setAdditionalAttestationInfo.";
             card_->cacheModuleHash(keyParams);
+            error = KM_ERROR_OK;  // Mark cmd successful
         }
-#endif   //NXP_EXTNS
-#endif   // INIT_USING_SEHAL_TRANSPORT
+#endif  // INIT_USING_SEHAL_TRANSPORT
+#else
+            card_->sendRequest(Instruction::INS_SET_ADDITIONAL_ATTESTATION_INFO, request.encode());
+#endif  // NXP_EXTNS
         if (err != KM_ERROR_OK) {
-            LOG(ERROR) << "Error in sending in setAdditionalAttestationInfo err " << err;
-            err = KM_ERROR_OK;
-        }
-        if (err != KM_ERROR_OK) {
-            LOG(ERROR) << "Error in sending in setAdditionalAttestationInfo.";
-            return km_utils::kmError2ScopedAStatus(err);
+            if (isErrorOverrideBlocked()) {
+                LOG(ERROR) << "Error in sending in setAdditionalAttestationInfo";
+                return km_utils::kmError2ScopedAStatus(err);
+            } else {
+                LOG(ERROR) << "Override Error in sending in setAdditionalAttestationInfo ";
+                return ScopedAStatus::ok();
+            }
         }
     }
     return ScopedAStatus::ok();

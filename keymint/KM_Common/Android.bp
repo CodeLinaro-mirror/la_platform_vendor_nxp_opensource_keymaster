@@ -128,7 +128,6 @@ cc_library {
     name: "libjc_keymint4_nxp",
     defaults: [
         "keymaster_defaults",
-        "keymint_use_latest_hal_aidl_ndk_shared",
     ],
     srcs: [
         "CborConverter.cpp",
@@ -161,6 +160,7 @@ cc_library {
         "libjc_keymint_transport_nxp",
         "libbinder_ndk",
         "libmemunreachable",
+        "android.hardware.security.keymint-V4-ndk",
         "android.hardware.secure_element-V1-ndk",
     ],
     export_include_dirs: [
@@ -178,19 +178,12 @@ cc_binary {
     name: "android.hardware.security.keymint4-service.strongbox-nxp-qti",
     relative_install_path: "hw",
     init_rc: ["android.hardware.security.keymint4-service.strongbox_nxp.rc"],
-    vintf_fragments: [
-        "android.hardware.security.keymint4-service.strongbox_nxp.xml",
-        "android.hardware.security.sharedsecret-service.strongbox4_nxp.xml",
-    ],
     vendor: true,
     cflags: [
         "-Wall",
         "-Wextra",
         "-DOMAPI_TRANSPORT",
         "-DNXP_EXTNS",
-    ],
-    defaults: [
-        "keymint_use_latest_hal_aidl_ndk_shared",
     ],
     shared_libs: [
         "android.hardware.security.rkp-V3-ndk",
@@ -207,6 +200,7 @@ cc_binary {
         "liblog",
         "libutils",
         "libhidlbase",
+        "android.hardware.security.keymint-V4-ndk",
         "android.hardware.secure_element-V1-ndk",
     ],
     srcs: [
@@ -235,4 +229,18 @@ prebuilt_etc {
     sub_dir: "permissions",
     vendor: true,
     src: "android.hardware.hardware_keystore.jc-strongbox-keymint4_nxp.xml",
+}
+
+prebuilt_etc {
+    name: "android.hardware.security.keymint4-service.strongbox_nxp.xml",
+    src: "android.hardware.security.keymint4-service.strongbox_nxp.xml",
+    relative_install_path: "vintf/manifest",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "android.hardware.security.sharedsecret-service.strongbox4_nxp.xml",
+    src: "android.hardware.security.sharedsecret-service.strongbox4_nxp.xml",
+    relative_install_path: "vintf/manifest",
+    vendor: true,
 }
